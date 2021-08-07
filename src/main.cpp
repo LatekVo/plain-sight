@@ -20,7 +20,7 @@
  *  }
  */
 void print_help() {
-		
+	std::cout << "[*.png] [*.txt] [0-1 #dec, enc]" << std::endl;	
 }
 
 int main(int argc, char *argv[]) {
@@ -28,18 +28,18 @@ int main(int argc, char *argv[]) {
 	std::deque<unsigned char> byte_queue; //unpacked to bits
 	size_t bpp = 2;
 	size_t seed = 0x42; //initial doesn't matter, can be set to be used as a key
-	bool enc_dec = 1; //1-enc, 0-dec
 	//std::mt19937 r; 
 	//r.seed(seed);
 
 	//implement parsing, for options like
 	//	-d [high|medium|low], always, watchout for plain color, only at chaotic
 	//	-b [{}], amount of bits per pixel (default: 2), unnoticable to human, 4 px per character
-	if (argc != 3) {
+	if (argc != 4) {
 		print_help();
 		return 1;	
 	}
 	
+	bool enc_dec = argv[3]; //1-enc, 0-dec
 	int x, y, mode, raw_mode;
 	//c array of 8-bits
 	unsigned char *raw_data = stbi_load(argv[1], &x, &y, &raw_mode, 0);
@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
 	}
 	//bind (i think) supplies the second argument's return to first argument, creates a functor out of that
 	auto rng = std::bind(std::uniform_int_distribution<int>(0,x*y - 1), std::mt19937(seed));
-	
+
 	int b_cnt = 0;
 	char byte = 0x0;
 	
