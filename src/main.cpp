@@ -54,9 +54,8 @@ int main(int argc, char *argv[]) {
 	if (enc_dec) {
 		FILE *file_txt = fopen(argv[2], "r");
 		if (!file_txt) {
-			char *txt = nullptr; 
+			std::cout << "failed opening payload file, treating as a string litral" << std::endl;
 			file_txt = fopen("tmp.txt", "rw"); //this might be wrong
-
 			//yes, this isn't the best, anyways, create the file, replace message with tmp, done
 
 		}
@@ -130,7 +129,14 @@ int main(int argc, char *argv[]) {
 	end_dec:
 	
 	if (enc_dec) {
-		stbi_write_png("output.png", x, y, raw_mode, raw_data, 0);	
+		for (int i = 0; i < x*y*raw_mode; i++) {
+			// could use foo &= ~x
+			raw_data[i] >>= bpp;
+			raw_data[i] <<= bpp;
+			raw_data[i] |= bit_mask[i];
+		}
+		stbi_write_png("out/output.png", x, y, raw_mode, raw_data, x*raw_mode);
+		stbi_write_bmp("out/output.bmp", x, y, raw_mode, raw_data);
 	} else {
 		for (int i = 0; i < byte_queue.size(); i++) {
 			std::cout << byte_queue[i];
