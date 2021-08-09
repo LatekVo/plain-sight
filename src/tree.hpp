@@ -1,3 +1,5 @@
+#include <vector>
+
 template<typename Tk, typename T>
 struct __tree {
 	Tk key;
@@ -7,7 +9,6 @@ struct __tree {
 	__tree<Tk, T> *high = nullptr;
 };
 
-//TODO: destructor, recursive only if neccesary
 template<typename Tk, typename T>
 class Tree {
 private:
@@ -81,5 +82,9 @@ public:
 
 		return nullptr;
 
+	}
+	//terribly inefficient, i hope the fact this is a destructor excuses this
+	~Tree() {
+		
 	}
 };

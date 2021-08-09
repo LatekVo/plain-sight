@@ -20,13 +20,13 @@
  *  }
  */
 void print_help() {
-	std::cout << "[*.png] [*.txt] [0-1 #dec, enc]" << std::endl;	
+	std::cout << "[*.png] [null | *.txt]" << std::endl;	
 }
 
 int main(int argc, char *argv[]) {
 
 	std::deque<unsigned char> byte_queue; //unpacked to bits
-	size_t bpp = 2;
+	size_t bpp = 1;
 	size_t seed = 0x42; //initial doesn't matter, can be set to be used as a key
 	//std::mt19937 r; 
 	//r.seed(seed);
@@ -34,16 +34,26 @@ int main(int argc, char *argv[]) {
 	//implement parsing, for options like
 	//	-d [high|medium|low], always, watchout for plain color, only at chaotic
 	//	-b [{}], amount of bits per pixel (default: 2), unnoticable to human, 4 px per character
-	if (argc != 4) {
-		print_help();
-		return 1;	
+	
+	bool enc_dec; //true - enc, false - dec
+	switch (argc) {
+		case 2:
+			enc_dec = false;
+			break;
+		case 3:
+			enc_dec = true;
+			break;
+		default:
+			print_help();
+			return 1;
 	}
 	
-	bool enc_dec = argv[3]; //1-enc, 0-dec
 	int x, y, mode, raw_mode;
 	//c array of 8-bits
 	unsigned char *raw_data = stbi_load(argv[1], &x, &y, &raw_mode, 0);
+	//read up the docs, how is the color info reall stored?
 	unsigned char bit_mask[x*y*raw_mode];
+	for (int i = 0; i < x*y*raw_mode; i++) bit_mask[i] = 0x0;
 	Tree<size_t, bool> occupation;
 	if (raw_mode == 4) {
 		mode = 3; //alpha is the fourth, we want to avoid alpha
@@ -51,6 +61,7 @@ int main(int argc, char *argv[]) {
 		mode = raw_mode;
 	}
 
+	//fixed reversion, checked, works as intended
 	if (enc_dec) {
 		FILE *file_txt = fopen(argv[2], "r");
 		if (!file_txt) {
@@ -62,14 +73,16 @@ int main(int argc, char *argv[]) {
 		
 		int c = EOF;
 		while ((c = fgetc(file_txt)) != EOF) {
-			char rev_c;
+			char rev_c = 0x0;
 			for (size_t i = 0; i < 8; i++) {
-				rev_c = rev_c | (c % 2);
-				rev_c = rev_c << 1;
-				c = c >> 1;
+				rev_c <<= 1;
+				rev_c |= (c & 1);
+				c >>= 1;
 			}
 			byte_queue.push_back(rev_c);
 		}
+		//last 5 bits get chopped off, why? why not? this fixes it
+		byte_queue.push_back(0x0);
 		byte_queue.push_back(0x0);
 		fclose(file_txt);
 	}
@@ -77,13 +90,13 @@ int main(int argc, char *argv[]) {
 	auto rng = std::bind(std::uniform_int_distribution<int>(0,x*y - 1), std::mt19937(seed));
 
 	int b_cnt = 0;
-	char byte = 0x0;
+	unsigned char byte = 0x0;
 	
 	if (enc_dec) {
 		byte = byte_queue.front();
 		byte_queue.pop_front();
 	}
-	while ((0 < byte_queue.size() && enc_dec) || !enc_dec) {	
+	while ((0 < byte_queue.size() && enc_dec) || (!enc_dec)) {	
 		int r_coor = rng() * raw_mode;
 		
 		if (occupation.find(r_coor)) {
@@ -99,25 +112,30 @@ int main(int argc, char *argv[]) {
 				if (enc_dec) {
 					byte = byte_queue.front();
 					byte_queue.pop_front();
+					std::cout << "\n";
 				} else {
+					std::cout << "\n";
 					if (byte == 0x0) 
 						goto end_dec;
 					byte_queue.push_back(byte);
 					byte = 0x0;
 				}
 			}
-			//2d from start works just fine
-			//bitmask holds all the changes, used to keep track of them
-				
+			
+			//bitmask holds all the changes
 			for (int b = 0; b < bpp; b++) {	
 				//TODO: both need to store used pixels somehow, though i could deal with the corruption later
 				if (enc_dec) {
-					(bit_mask[r_coor + ch] <<= 1) |= (byte % 2);
+					std::cout << (unsigned int)byte;
+					bit_mask[r_coor + ch] = (bit_mask[r_coor + ch] << 1) | (byte & 1);
 					byte >>= 1;
+					std::cout << " , " << (int)bit_mask[r_coor+ch] << "\n"; //DEBG
 				} else {
-					byte |= raw_data[r_coor + ch] % 2;
+					std::cout << (unsigned int)(raw_data[r_coor + ch] & 1);
+					byte <<= 1; 
+					byte |= raw_data[r_coor + ch] & 1;
 					raw_data[r_coor + ch] >>= 1;
-					byte <<= 1;
+					std::cout << (unsigned int)(byte & 1) << "\n";
 				}
 				b_cnt++;
 				if (b_cnt == 8) goto n_pixel;
@@ -126,18 +144,20 @@ int main(int argc, char *argv[]) {
 		n_pixel: continue; //don't be mad, this avoids additional ifs 
 	}
 	
-	end_dec:
+	end_dec: 
 	
 	if (enc_dec) {
 		for (int i = 0; i < x*y*raw_mode; i++) {
 			// could use foo &= ~x
-			raw_data[i] >>= bpp;
-			raw_data[i] <<= bpp;
-			raw_data[i] |= bit_mask[i];
+			raw_data[i] = (raw_data[i] >> bpp << bpp) | bit_mask[i];
 		}
+		//will use switch after adding flags support
+		// BMP, PNG tested
 		stbi_write_png("out/output.png", x, y, raw_mode, raw_data, x*raw_mode);
 		stbi_write_bmp("out/output.bmp", x, y, raw_mode, raw_data);
+		// JPG DOESNT WORK stbi_write_jpg("out/output.jpg", x, y, raw_mode, raw_data, 100);
 	} else {
+		std::cout << "END_DEC, length: " << byte_queue.size() << "\n";
 		for (int i = 0; i < byte_queue.size(); i++) {
 			std::cout << byte_queue[i];
 		}
