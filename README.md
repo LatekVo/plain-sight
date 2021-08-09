@@ -1,2 +1,2 @@
 # plain-sight
-note: project WIP, do not except it to work properly even at it's complete state lol
+Project finished, succesfully encoding **into** png or bmp images, the input image type is not important, the output will be either png or bmp
