@@ -9,6 +9,7 @@
 #include <functional>
 #include <iostream>
 
+//#include "argp.h"
 #include "tree.hpp"
 
 //note: stride_in_bytes is the amount of bytes in a row, leave at 0 for automatic
@@ -20,21 +21,18 @@
  *  }
  */
 void print_help() {
-	std::cout << "[*.png] [null | *.txt]" << std::endl;	
+	std::cout << "decode: [image] (png | bmp)" << std::endl;	
+	std::cout << "encode: [image] [message]" << std::endl;	
 }
 
 int main(int argc, char *argv[]) {
 
-	std::deque<unsigned char> byte_queue; //unpacked to bits
+	std::deque<unsigned char> byte_queue; //modified string
 	size_t bpp = 1;
-	size_t seed = 0x42; //initial doesn't matter, can be set to be used as a key
-	//std::mt19937 r; 
-	//r.seed(seed);
-
-	//implement parsing, for options like
-	//	-d [high|medium|low], always, watchout for plain color, only at chaotic
-	//	-b [{}], amount of bits per pixel (default: 2), unnoticable to human, 4 px per character
+	size_t seed = 0x42; //initial doesn't matter, can be used as a key
 	
+	//std::vector<arg_info> arglist = arg_parser(argc, argv);
+
 	bool enc_dec; //true - enc, false - dec
 	switch (argc) {
 		case 2:
@@ -60,15 +58,17 @@ int main(int argc, char *argv[]) {
 	} else {
 		mode = raw_mode;
 	}
-
 	//fixed reversion, checked, works as intended
 	if (enc_dec) {
 		FILE *file_txt = fopen(argv[2], "r");
 		if (!file_txt) {
 			std::cout << "failed opening payload file, treating as a string litral" << std::endl;
-			file_txt = fopen("tmp.txt", "rw"); //this might be wrong
-			//yes, this isn't the best, anyways, create the file, replace message with tmp, done
+			file_txt = fopen("tmp.txt", "w"); 
+		
+			fwrite(argv[2], sizeof(char), sizeof(argv[2]), file_txt);
 
+			fclose(file_txt);
+			file_txt = fopen("tmp.txt", "r"); 
 		}
 		
 		int c = EOF;
@@ -153,8 +153,8 @@ int main(int argc, char *argv[]) {
 		}
 		//will use switch after adding flags support
 		// BMP, PNG tested
-		stbi_write_png("out/output.png", x, y, raw_mode, raw_data, x*raw_mode);
-		stbi_write_bmp("out/output.bmp", x, y, raw_mode, raw_data);
+		stbi_write_png("output.png", x, y, raw_mode, raw_data, x*raw_mode);
+		stbi_write_bmp("output.bmp", x, y, raw_mode, raw_data);
 		// JPG DOESNT WORK stbi_write_jpg("out/output.jpg", x, y, raw_mode, raw_data, 100);
 	} else {
 		std::cout << "END_DEC, length: " << byte_queue.size() << "\n";

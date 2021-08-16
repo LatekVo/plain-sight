@@ -1,2 +1,13 @@
 plain-sight
+plain-sight.exe
+linux32-plain-sight
+linux64-plain-sight
+win32-plain-sight
+win64-plain-sight
 
+message.txt
+# input name may vary 
+*.png
+*.bmp
+*.jpg
+*.jpeg
